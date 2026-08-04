@@ -29,8 +29,8 @@ class _FakeHindsightHandler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         if path == "/health":
             self._send({"status": "ok"})
-        elif path == "/v1/default/banks/default":
-            self._send({"id": "default"})
+        elif path == "/v1/default/banks/default/profile":
+            self._send({"bank_id": "default", "name": "default"})
         elif path == "/v1/default/banks/default/documents":
             self._send(
                 {
@@ -75,7 +75,7 @@ class HindsightHTTPClientTests(unittest.TestCase):
             client = HindsightClient(f"http://{host}:{port}/mcp/agents", bank="default")
             self.assertEqual(client.endpoint, f"http://{host}:{port}")
             self.assertEqual(client.health()["status"], "ok")
-            self.assertEqual(client.bank_info()["id"], "default")
+            self.assertEqual(client.bank_info()["bank_id"], "default")
             self.assertEqual(client.list_documents()[0].document_id, "apple-journal:existing")
             document = render_entry(
                 JournalEntry(

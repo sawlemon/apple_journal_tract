@@ -91,10 +91,13 @@ def render_entry(
         "source_fingerprint": entry.source_fingerprint,
         "body_fingerprint": entry.body_fingerprint,
         "attachment_fingerprint": entry.attachment_fingerprint,
-        "attachment_summary": entry.attachment_summary,
     }
     if entry.title:
         metadata["title"] = entry.title
+    if entry.attachment_summary:
+        # Hindsight metadata values must be strings; encode the structured
+        # attachment summary as JSON rather than dropping it.
+        metadata["attachment_summary"] = _json(entry.attachment_summary)
 
     return RenderedDocument(
         document_id=document_id or document_id_for_source(entry.source_path),

@@ -111,7 +111,9 @@ class HindsightClient:
         return response if isinstance(response, dict) else {"response": response}
 
     def bank_info(self, bank: str | None = None) -> dict[str, Any]:
-        response = self.request("GET", self._bank_url(bank=bank))
+        # The bare bank URL only supports PUT/PATCH/DELETE on the live
+        # Hindsight REST API; /profile is the GET-able bank descriptor.
+        response = self.request("GET", self._bank_url("/profile", bank))
         return response if isinstance(response, dict) else {"response": response}
 
     def verify_bank(self, bank: str | None = None) -> dict[str, Any]:

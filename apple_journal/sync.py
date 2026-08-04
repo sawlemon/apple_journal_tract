@@ -409,6 +409,7 @@ def apply_plan(
             operation_id = client.retain(rendered, bank=bank)
         except Exception as exc:  # noqa: BLE001
             counts["failed"] += 1
+            print(f"[apply] failed document_id={rendered.document_id} source_path={rendered.source_path} error={exc}")
             continue
         ledger.mark_pending(
             rendered.document_id,
