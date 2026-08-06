@@ -162,7 +162,13 @@ class HindsightClient:
                 )
                 if not document_id:
                     continue
-                metadata = nested.get("metadata") or raw.get("metadata") or {}
+                metadata = (
+                    nested.get("document_metadata")
+                    or raw.get("document_metadata")
+                    or nested.get("metadata")
+                    or raw.get("metadata")
+                    or {}
+                )
                 if isinstance(metadata, str):
                     try:
                         metadata = json.loads(metadata)
