@@ -74,9 +74,10 @@ class ParserTests(unittest.TestCase):
             self.assertEqual({entry.body for entry in entries}, {"one", "two"})
 
     @unittest.skipUnless(SUPPLIED_EXPORT.is_dir(), "supplied Apple Journal export is not mounted")
-    def test_supplied_export_has_80_index_entries_and_bodies(self) -> None:
+    def test_supplied_export_parses_with_dates_and_bodies(self) -> None:
         entries = parse_export(SUPPLIED_EXPORT)
-        self.assertEqual(len(entries), 80)
+        # The live export grows with each re-export; only the original floor is stable.
+        self.assertGreaterEqual(len(entries), 80)
         self.assertTrue(all(entry.entry_date for entry in entries))
         self.assertTrue(all(entry.body for entry in entries))
         self.assertFalse(any("font-family" in entry.body for entry in entries))
