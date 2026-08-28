@@ -5,12 +5,14 @@ import unittest
 import hashlib
 from pathlib import Path
 
+from apple_journal import config
 from apple_journal.hindsight import normalize_rest_base
 from apple_journal.ledger import FAILED, PENDING, STORED, Ledger
 from apple_journal.models import JournalEntry, RemoteDocument, ResourceAttachment
 from apple_journal.render import render_entry
 from apple_journal.sync import (
     StalePlanError,
+    _truncate_query,
     apply_plan,
     build_plan,
     retry_failed,
@@ -26,6 +28,7 @@ class FakeClient:
         self.operations: dict[str, str] = {}
         self.retains = []
         self.recall_response = {"results": []}
+        self.recall_queries: list[str] = []
         self.next_operation = 1
         self.retry_calls = 0
         self.bank = "default"
@@ -65,6 +68,7 @@ class FakeClient:
         return new_id
 
     def recall(self, query: str, *, bank: str, max_tokens: int = 512):
+        self.recall_queries.append(query)
         return self.recall_response
 
 
@@ -214,6 +218,29 @@ class SyncTests(unittest.TestCase):
         self.assertEqual(plan.entries[0].action, "new")
         self.assertEqual(plan.entries[0].semantic_matches[0]["document_id"], "apple-journal:similar")
         self.assertEqual(self.apply(client, plan, [entry])["queued"], 1)
+
+    def test_recall_query_is_truncated_under_server_token_limit(self) -> None:
+        client = FakeClient()
+        long_body = " ".join(f"word-{index}" for index in range(config.RECALL_QUERY_MAX_TOKENS + 500))
+        entry = make_entry(body=long_body)
+        plan = self.plan(client, [entry], semantic=True)
+        self.assertEqual(plan.entries[0].action, "new")
+        self.assertEqual(len(client.recall_queries), 1)
+        sent = client.recall_queries[0].split()
+        self.assertLessEqual(len(sent), config.RECALL_QUERY_MAX_TOKENS)
+        self.assertEqual(sent, long_body.split()[: config.RECALL_QUERY_MAX_TOKENS])
+
+    def test_short_recall_query_is_left_intact(self) -> None:
+        client = FakeClient()
+        entry = make_entry(body="short synthetic body")
+        self.plan(client, [entry], semantic=True)
+        self.assertEqual(client.recall_queries, ["short synthetic body"])
+
+    def test_truncate_query_caps_long_text(self) -> None:
+        text = " ".join(f"word-{index}" for index in range(config.RECALL_QUERY_MAX_TOKENS + 100))
+        truncated = _truncate_query(text)
+        self.assertEqual(len(truncated.split()), config.RECALL_QUERY_MAX_TOKENS)
+        self.assertEqual(_truncate_query("tiny"), "tiny")
 
     def test_stale_plan_rejects_export_change(self) -> None:
         client = FakeClient()

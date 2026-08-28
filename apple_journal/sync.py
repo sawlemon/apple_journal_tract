@@ -51,6 +51,15 @@ def _score(raw: dict[str, Any]) -> float | None:
     return None
 
 
+def _truncate_query(text: str, *, max_tokens: int | None = None) -> str:
+    """Cap a recall query under the server's token limit, keeping the opening text."""
+    limit = config.RECALL_QUERY_MAX_TOKENS if max_tokens is None else max_tokens
+    tokens = text.split()
+    if len(tokens) <= limit:
+        return text
+    return " ".join(tokens[:limit])
+
+
 def _semantic_flags(response: dict[str, Any], threshold: float) -> list[dict[str, Any]]:
     if isinstance(response, list):
         values = response
@@ -275,7 +284,7 @@ def build_plan(
 
         semantic_matches: list[dict[str, Any]] = []
         if action == "new" and semantic:
-            query = entry.body.strip() or entry.title.strip()
+            query = _truncate_query(entry.body.strip() or entry.title.strip())
             if query:
                 try:
                     semantic_matches = _semantic_flags(

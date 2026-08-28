@@ -15,6 +15,10 @@ DEFAULT_LEDGER_NAME = "ledger.json"
 SOURCE_TAG = "source:apple-journal"
 TYPE_TAG = "type:journal-entry"
 REVIEW_THRESHOLD = 0.85
+# Hindsight rejects recall queries above 500 tokens with HTTP 400. The server's
+# tokenizer counts ~25% more tokens than whitespace splitting on journal text,
+# so 350 whitespace tokens leaves margin (measured 551-580 server tokens at 450).
+RECALL_QUERY_MAX_TOKENS = 350
 RETAIN_CONTEXT = "A first-person personal journal entry imported from Apple Journal. Preserve the writer's voice and the distinction between written text and structured attachment metadata."
 HTTP_TIMEOUT = 60
 POLL_INTERVAL = 1.0
