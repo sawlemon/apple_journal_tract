@@ -13,6 +13,7 @@ from apple_journal.render import render_entry
 
 class _FakeHindsightHandler(BaseHTTPRequestHandler):
     received_posts: list[tuple[str, dict]] = []
+    config_status: int = 200
 
     def log_message(self, format: str, *args) -> None:  # noqa: A003
         return
@@ -29,6 +30,11 @@ class _FakeHindsightHandler(BaseHTTPRequestHandler):
         path = urlsplit(self.path).path
         if path == "/health":
             self._send({"status": "ok"})
+        elif path == "/v1/default/banks/default/config":
+            if self.config_status != 200:
+                self._send({"error": "config unavailable"}, self.config_status)
+            else:
+                self._send({"bank_id": "default", "config": {}})
         elif path == "/v1/default/banks/default/profile":
             self._send({"bank_id": "default", "name": "default"})
         elif path == "/v1/default/banks/default/documents":
@@ -96,6 +102,22 @@ class HindsightHTTPClientTests(unittest.TestCase):
             self.assertTrue(retain_posts[0]["async"])
             self.assertEqual(retain_posts[0]["items"][0]["update_mode"], "replace")
         finally:
+            server.shutdown()
+            server.server_close()
+            thread.join(timeout=2)
+
+    def test_bank_info_falls_back_to_profile_without_config(self) -> None:
+        _FakeHindsightHandler.received_posts = []
+        _FakeHindsightHandler.config_status = 404
+        server = ThreadingHTTPServer(("127.0.0.1", 0), _FakeHindsightHandler)
+        thread = threading.Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+        try:
+            host, port = server.server_address
+            client = HindsightClient(f"http://{host}:{port}", bank="default")
+            self.assertEqual(client.bank_info()["bank_id"], "default")
+        finally:
+            _FakeHindsightHandler.config_status = 200
             server.shutdown()
             server.server_close()
             thread.join(timeout=2)
