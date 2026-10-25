@@ -111,9 +111,15 @@ class HindsightClient:
         return response if isinstance(response, dict) else {"response": response}
 
     def bank_info(self, bank: str | None = None) -> dict[str, Any]:
-        # The bare bank URL only supports PUT/PATCH/DELETE on the live
-        # Hindsight REST API; /profile is the GET-able bank descriptor.
-        response = self.request("GET", self._bank_url("/profile", bank))
+        # Current Hindsight serves the GET-able bank descriptor at /config; the
+        # bare bank URL stays PUT/PATCH/DELETE-only and /profile was removed
+        # (HTTP 410) but remains the fallback for pre-/config deployments.
+        try:
+            response = self.request("GET", self._bank_url("/config", bank))
+        except HindsightHTTPError as exc:
+            if exc.status != 404:
+                raise
+            response = self.request("GET", self._bank_url("/profile", bank))
         return response if isinstance(response, dict) else {"response": response}
 
     def verify_bank(self, bank: str | None = None) -> dict[str, Any]:
